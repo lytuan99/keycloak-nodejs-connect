@@ -1,2 +1,10 @@
 node_modules
 .idea
+package-lock.json
+.github
+docs
+example
+scrips
+Makefile
+release.sh
+run-tests.shset-version.sh

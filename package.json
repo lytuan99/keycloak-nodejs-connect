@@ -1,8 +1,7 @@
 {
-  "name": "keycloak-connect",
-  "version": "16.0.0-dev",
+  "name": "keycloak-connect-cache",
+  "version": "1.0.1",
   "description": "Keycloak Connect Middleware",
-  "homepage": "http://keycloak.org",
   "main": "keycloak.js",
   "scripts": {
     "lint": "jshint *.js stores/*.js middleware/*.js middleware/auth-utils/*.js example/*.js",
@@ -35,7 +34,8 @@
   },
   "license": "Apache-2.0",
   "dependencies": {
-    "jwk-to-pem": "^2.0.0"
+    "jwk-to-pem": "^2.0.0",
+    "node-cache": "^5.1.2"
   },
   "devDependencies": {
     "axios": "^0.21.1",

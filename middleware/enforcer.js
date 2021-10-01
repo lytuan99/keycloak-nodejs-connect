@@ -15,6 +15,8 @@
  */
 'use strict';
 
+const { cacheSource, getSourceValue } = require("keycloak-connect-cache/middleware/utils");
+
 function handlePermissions (permissions, callback) {
   for (let i = 0; i < permissions.length; i++) {
     const expected = permissions[i].split(':');
@@ -58,6 +60,7 @@ function Enforcer (keycloak, config) {
 Enforcer.prototype.enforce = function enforce (expectedPermissions) {
   const keycloak = this.keycloak;
   const config = this.config;
+  const { lifespan } = this.keycloak.getConfig();
 
   if (typeof expectedPermissions === 'string') {
     expectedPermissions = [expectedPermissions];
@@ -107,7 +110,7 @@ Enforcer.prototype.enforce = function enforce (expectedPermissions) {
     }
 
     if (config.response_mode === 'permissions') {
-      return keycloak.checkPermissions(authzRequest, request, function (permissions) {
+      return keycloak.checkPermissions(authzRequest, request, function (permissions, hashedKey) {
         if (handlePermissions(expectedPermissions, function (resource, scope) {
           if (!permissions || permissions.length === 0) {
             return false;
@@ -130,25 +133,36 @@ Enforcer.prototype.enforce = function enforce (expectedPermissions) {
           }
         })) {
           request.permissions = permissions;
+          cacheSource(hashedKey, permissions, {ttl: lifespan});
           return next();
         }
 
         return keycloak.accessDenied(request, response, next);
+      }).then((permissions) => {
+        request.permissions = permissions;
+        next();
       }).catch(function () {
         return keycloak.accessDenied(request, response, next);
       });
     } else if (config.response_mode === 'token') {
       authzRequest.response_mode = undefined;
-      return keycloak.checkPermissions(authzRequest, request).then(function (grant) {
+      return keycloak.checkPermissions(authzRequest, request, async function (grant, hashedKey) {
+        grant = await grant;
         if (handlePermissions(expectedPermissions, function (resource, scope) {
           if (!grant.access_token.hasPermission(resource, scope)) {
             return false;
           }
         })) {
+          cacheSource(hashedKey, grant.access_token.content, {ttl: lifespan});
+          request.accessTokenContent = grant.access_token.content;
           return next();
         }
 
         return keycloak.accessDenied(request, response, next);
+      }).then((sourceValue) => {
+        console.log('cached');
+        request.accessTokenContent = sourceValue;
+        return next();
       }).catch(function () {
         return keycloak.accessDenied(request, response, next);
       });

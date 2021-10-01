@@ -23,6 +23,7 @@ const querystring = require('querystring');
 const Grant = require('./grant');
 const Token = require('./token');
 var Rotation = require('./rotation');
+const { checkSource, hash, getSourceValue } = require('../utils');
 
 /**
  * Construct a grant manager.
@@ -41,6 +42,8 @@ function GrantManager (config) {
   this.notBefore = 0;
   this.rotation = new Rotation(config);
   this.verifyTokenAudience = config.verifyTokenAudience;
+  this.lifespan = config.lifespan || 300;
+  this.maxEntries = config.maxEntries || 1000;
 }
 
 /**
@@ -178,14 +181,18 @@ GrantManager.prototype.checkPermissions = function obtainPermissions (authzReque
     params.permission.push(permission);
   }
 
-  let manager = this;
+  const hashedString = hash('md5', params);
+  const sourceValue = getSourceValue(hashedString);
+  if(sourceValue)
+    return Promise.resolve(sourceValue);
 
+  let manager = this;
   var handler = (resolve, reject, json) => {
     try {
-      if (authzRequest.response_mode === 'decision' || authzRequest.response_mode === 'permissions') {
-        callback(JSON.parse(json));
+      if (authzRequest.response_mode === 'permissions') {
+        callback(JSON.parse(json), hashedString);
       } else {
-        resolve(manager.createGrant(json));
+        callback(manager.createGrant(json), hashedString);
       }
     } catch (err) {
       reject(err);

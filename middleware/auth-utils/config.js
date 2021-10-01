@@ -167,6 +167,14 @@ Config.prototype.configure = function configure (config) {
    * @type {Boolean}
    */
   this.verifyTokenAudience = resolveValue(config['verify-token-audience'] || config.verifyTokenAudience || false);
+
+  /**
+   * get config by policy enforcer
+   */
+  const policyEnforcer = resolveValue((config['policy-enforcer'] || config.policyEnforcer || {}));
+  const pathCache = resolveValue(policyEnforcer['path-cache'] || policyEnforcer.pathCache || {});
+  this.lifespan = pathCache.lifespan;
+  this.maxEntries = pathCache.maxEntries;
 };
 
 module.exports = Config;
